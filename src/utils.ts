@@ -1,22 +1,22 @@
-const DELIMITERS = [",", ";", "\t", "|"] as const
+const DELIMITERS = [",", ";", "\t", "|"] as const;
 
 /**
  * Counts occurrences of a delimiter in a string, ignoring characters inside quoted fields.
  */
 function countOutsideQuotes(line: string, delimiter: string): number {
-  let count = 0
-  let inQuotes = false
+	let count = 0;
+	let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
-    if (char === '"') {
-      inQuotes = !inQuotes
-    } else if (!inQuotes && char === delimiter) {
-      count++
-    }
-  }
+	for (let i = 0; i < line.length; i++) {
+		const char = line[i];
+		if (char === '"') {
+			inQuotes = !inQuotes;
+		} else if (!inQuotes && char === delimiter) {
+			count++;
+		}
+	}
 
-  return count
+	return count;
 }
 
 /**
@@ -25,30 +25,28 @@ function countOutsideQuotes(line: string, delimiter: string): number {
  * Ties broken by priority: , > ; > \t > |
  */
 export function detectDelimiter(lines: string[]): string {
-  if (lines.length === 0) return ","
+	if (lines.length === 0) return ",";
 
-  let bestDelimiter = ","
-  let bestScore = -1
+	let bestDelimiter = ",";
+	let bestScore = -1;
 
-  for (const delimiter of DELIMITERS) {
-    const counts = lines.map((line) => countOutsideQuotes(line, delimiter))
-    const nonZero = counts.filter((c) => c > 0)
+	for (const delimiter of DELIMITERS) {
+		const counts = lines.map((line) => countOutsideQuotes(line, delimiter));
+		const nonZero = counts.filter((c) => c > 0);
 
-    if (nonZero.length === 0) continue
+		if (nonZero.length === 0) continue;
 
-    // Score = how many lines have the same count (consistency)
-    // weighted by having a non-zero count in most lines
-    const mode = nonZero.sort((a, b) => a - b)[Math.floor(nonZero.length / 2)]
-    const consistent = counts.filter((c) => c === mode).length
-    const score = consistent * 1000 + nonZero.length
+		const mode = nonZero.sort((a, b) => a - b)[Math.floor(nonZero.length / 2)];
+		const consistent = counts.filter((c) => c === mode).length;
+		const score = consistent * 1000 + nonZero.length;
 
-    if (score > bestScore) {
-      bestScore = score
-      bestDelimiter = delimiter
-    }
-  }
+		if (score > bestScore) {
+			bestScore = score;
+			bestDelimiter = delimiter;
+		}
+	}
 
-  return bestDelimiter
+	return bestDelimiter;
 }
 
 /**
@@ -56,34 +54,32 @@ export function detectDelimiter(lines: string[]): string {
  * Supports \r\n, \r, and \n.
  */
 export function splitLines(csv: string): string[] {
-  const lines: string[] = []
-  let current = ""
-  let inQuotes = false
+	const lines: string[] = [];
+	let current = "";
+	let inQuotes = false;
 
-  for (let i = 0; i < csv.length; i++) {
-    const char = csv[i]
+	for (let i = 0; i < csv.length; i++) {
+		const char = csv[i];
 
-    if (char === '"') {
-      inQuotes = !inQuotes
-      current += char
-    } else if (!inQuotes && (char === "\r" || char === "\n")) {
-      // Handle \r\n as single line break
-      if (char === "\r" && csv[i + 1] === "\n") {
-        i++
-      }
-      lines.push(current)
-      current = ""
-    } else {
-      current += char
-    }
-  }
+		if (char === '"') {
+			inQuotes = !inQuotes;
+			current += char;
+		} else if (!inQuotes && (char === "\r" || char === "\n")) {
+			if (char === "\r" && csv[i + 1] === "\n") {
+				i++;
+			}
+			lines.push(current);
+			current = "";
+		} else {
+			current += char;
+		}
+	}
 
-  // Last line (may not end with line break)
-  if (current.length > 0) {
-    lines.push(current)
-  }
+	if (current.length > 0) {
+		lines.push(current);
+	}
 
-  return lines
+	return lines;
 }
 
 /**
@@ -91,54 +87,54 @@ export function splitLines(csv: string): string[] {
  * In relaxed mode, unclosed quotes are treated as literal text.
  * In strict mode, returns null to signal an error.
  */
-export function splitFields(line: string, delimiter: string, relaxed: boolean): string[] | null {
-  const fields: string[] = []
-  let current = ""
-  let inQuotes = false
-  let i = 0
+export function splitFields(
+	line: string,
+	delimiter: string,
+	relaxed: boolean,
+): string[] | null {
+	const fields: string[] = [];
+	let current = "";
+	let inQuotes = false;
+	let i = 0;
 
-  while (i < line.length) {
-    const char = line[i]
+	while (i < line.length) {
+		const char = line[i];
 
-    if (!inQuotes) {
-      if (char === delimiter) {
-        fields.push(current)
-        current = ""
-        i++
-      } else if (char === '"' && current.length === 0) {
-        inQuotes = true
-        i++
-      } else {
-        current += char
-        i++
-      }
-    } else {
-      // Inside quotes
-      if (char === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
-          // Escaped quote ""
-          current += '"'
-          i += 2
-        } else {
-          // Closing quote
-          inQuotes = false
-          i++
-        }
-      } else {
-        current += char
-        i++
-      }
-    }
-  }
+		if (!inQuotes) {
+			if (char === delimiter) {
+				fields.push(current);
+				current = "";
+				i++;
+			} else if (char === '"' && current.length === 0) {
+				inQuotes = true;
+				i++;
+			} else {
+				current += char;
+				i++;
+			}
+		} else {
+			if (char === '"') {
+				if (i + 1 < line.length && line[i + 1] === '"') {
+					current += '"';
+					i += 2;
+				} else {
+					inQuotes = false;
+					i++;
+				}
+			} else {
+				current += char;
+				i++;
+			}
+		}
+	}
 
-  // Unclosed quote
-  if (inQuotes) {
-    if (!relaxed) return null
-  }
+	if (inQuotes) {
+		if (!relaxed) return null;
+	}
 
-  fields.push(current)
+	fields.push(current);
 
-  return fields
+	return fields;
 }
 
 /**
@@ -146,13 +142,13 @@ export function splitFields(line: string, delimiter: string, relaxed: boolean): 
  * Escapes internal quotes as "".
  */
 export function escapeField(value: string, delimiter: string): string {
-  const needsQuoting =
-    value.includes(delimiter) ||
-    value.includes('"') ||
-    value.includes("\n") ||
-    value.includes("\r")
+	const needsQuoting =
+		value.includes(delimiter) ||
+		value.includes('"') ||
+		value.includes("\n") ||
+		value.includes("\r");
 
-  if (!needsQuoting) return value
+	if (!needsQuoting) return value;
 
-  return '"' + value.replace(/"/g, '""') + '"'
+	return '"' + value.replace(/"/g, '""') + '"';
 }

@@ -1,5 +1,5 @@
-export { parse } from "./parse"
-export { generate } from "./generate"
+export type { GenerateOptions } from "./generate";
+export { generate } from "./generate";
 
-export type { ParseOptions } from "./parse"
-export type { GenerateOptions } from "./generate"
+export type { ParseOptions } from "./parse";
+export { parse } from "./parse";
