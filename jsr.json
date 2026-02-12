@@ -1,0 +1,9 @@
+{
+  "name": "@your-scope/csv-kit",
+  "version": "0.1.0",
+  "description": "Isomorphic CSV parser and generator. Zero dependencies.",
+  "exports": "./src/index.ts",
+  "publish": {
+    "exclude": ["**/*.test.ts"]
+  }
+}

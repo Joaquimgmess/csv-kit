@@ -29,7 +29,7 @@ export function generate<T extends Record<string, unknown>>(
 		keys = Object.keys(columns);
 		headers = Object.values(columns);
 	} else if (data.length > 0) {
-		keys = Object.keys(data[0]);
+		keys = Object.keys(data[0]!);
 		headers = keys;
 	} else {
 		keys = [];

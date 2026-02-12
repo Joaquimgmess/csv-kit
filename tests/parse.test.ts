@@ -133,7 +133,7 @@ describe("parse — BOM", () => {
 	test("BOM does not affect header name", () => {
 		const csv = "\uFEFFnome,valor\nAlice,10";
 		const result = parse(csv);
-		expect(Object.keys(result[0])).toEqual(["nome", "valor"]);
+		expect(Object.keys(result[0]!)).toEqual(["nome", "valor"]);
 	});
 });
 

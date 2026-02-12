@@ -57,7 +57,8 @@ function parseWithHeader(
 	transformHeader: ((header: string, index: number) => string) | undefined,
 	relaxed: boolean,
 ): Record<string, string>[] {
-	const headerFields = splitFields(lines[0], delimiter, relaxed);
+	const firstLine = lines[0]!;
+	const headerFields = splitFields(firstLine, delimiter, relaxed);
 
 	if (headerFields === null) {
 		throw new Error("csv-kit: unclosed quote at row 1");
@@ -72,7 +73,8 @@ function parseWithHeader(
 	const results: Record<string, string>[] = [];
 
 	for (let i = 1; i < lines.length; i++) {
-		const fields = splitFields(lines[i], delimiter, relaxed);
+		const line = lines[i]!;
+		const fields = splitFields(line, delimiter, relaxed);
 
 		if (fields === null) {
 			throw new Error(`csv-kit: unclosed quote at row ${i + 1}`);
@@ -86,14 +88,15 @@ function parseWithHeader(
 
 		const row: Record<string, string> = {};
 		for (let j = 0; j < headers.length; j++) {
-			let value = j < fields.length ? fields[j] : "";
+			const header = headers[j]!;
+			let value = j < fields.length ? fields[j]! : "";
 			if (trim) value = value.trim();
-			row[headers[j]] = value;
+			row[header] = value;
 		}
 
 		if (relaxed && fields.length > headers.length) {
 			for (let j = headers.length; j < fields.length; j++) {
-				let value = fields[j];
+				let value = fields[j]!;
 				if (trim) value = value.trim();
 				row[`_col${j}`] = value;
 			}
@@ -114,7 +117,8 @@ function parseWithoutHeader(
 	const results: string[][] = [];
 
 	for (let i = 0; i < lines.length; i++) {
-		const fields = splitFields(lines[i], delimiter, relaxed);
+		const line = lines[i]!;
+		const fields = splitFields(line, delimiter, relaxed);
 
 		if (fields === null) {
 			throw new Error(`csv-kit: unclosed quote at row ${i + 1}`);

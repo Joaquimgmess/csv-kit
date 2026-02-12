@@ -3,24 +3,45 @@
   "version": "0.1.0",
   "description": "Isomorphic CSV parser and generator. Zero dependencies.",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
     }
   },
-  "files": ["dist"],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
   "scripts": {
-    "build": "bun run build.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "publish:jsr": "deno publish"
   },
-  "keywords": ["csv", "parse", "generate", "isomorphic", "typescript", "zero-dependencies"],
+  "keywords": [
+    "csv",
+    "parse",
+    "generate",
+    "isomorphic",
+    "typescript",
+    "zero-dependencies",
+    "rfc4180"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juaquito/csv-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/juaquito/csv-kit/issues"
+  },
+  "homepage": "https://github.com/juaquito/csv-kit#readme",
   "devDependencies": {
-    "bun-types": "^1.3.9"
+    "@types/bun": "^1.3.9"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   }
 }
