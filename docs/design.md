@@ -47,15 +47,29 @@ Extensões além do RFC (modo `relaxed`):
 
 ## API
 
-### `parse<T>(csv: string, options?: ParseOptions): T[]`
+### `parse`
 
-Converte uma string CSV em array de objetos tipados.
+Converte uma string CSV em array de objetos tipados ou array de arrays.
 
 ```ts
 import { parse } from "csv-kit"
 
+// header: true (default) — retorna objetos tipados
 const rows = parse<{ nome: string; valor: string }>(csvString)
+
+// header: false — retorna array de arrays
+const raw = parse(csvString, { header: false })
+// raw: string[][]
 ```
+
+#### Overloads de tipo
+
+```ts
+function parse<T = Record<string, string>>(csv: string, options?: ParseOptions & { header?: true }): T[]
+function parse(csv: string, options: ParseOptions & { header: false }): string[][]
+```
+
+Quando `header: true` (default), o retorno é `T[]`. Quando `header: false`, o retorno é `string[][]` — sem necessidade de generic.
 
 #### ParseOptions
 
@@ -68,15 +82,21 @@ const rows = parse<{ nome: string; valor: string }>(csvString)
 | `transformHeader` | `(header: string, index: number) => string` | `undefined` | Transformar nomes dos headers |
 | `relaxed` | `boolean` | `false` | Tolerar quotes malformadas e colunas inconsistentes |
 
-#### Retorno
+#### Tratamento de erros
 
-Quando `header: true` (default): `T[]` — array de objetos com headers como chaves.
+No modo **strict** (default, `relaxed: false`), o `parse` faz throw com mensagens descritivas:
+- `"csv-kit: row 3 has 3 fields, expected 5"` — colunas inconsistentes
+- `"csv-kit: unclosed quote at row 2"` — aspas não fechadas
+- Input não-string (`null`, `undefined`, `number`) sempre faz throw, independente do modo
 
-Quando `header: false`: `string[][]` — array de arrays de strings.
+No modo **relaxed** (`relaxed: true`), nunca faz throw:
+- Colunas faltantes são preenchidas com `""`
+- Aspas não fechadas são tratadas como texto literal
+- Colunas extras são preservadas
 
 #### Auto-detect de delimitador
 
-Algoritmo: contar ocorrências de cada candidato (`,`, `;`, `\t`, `|`) na primeira linha. O mais frequente vence. Em caso de empate, prioridade na ordem listada.
+Algoritmo: contar ocorrências de cada candidato (`,`, `;`, `\t`, `|`) nas **10 primeiras linhas** (fora de campos entre aspas). O delimitador com contagem mais consistente entre linhas vence. Em caso de empate, prioridade na ordem listada. Analisar apenas a primeira linha é frágil — headers podem ter poucos campos ou um campo só.
 
 ### `generate<T>(data: T[], options?: GenerateOptions): string`
 
@@ -94,8 +114,30 @@ const csv = generate(rows, { delimiter: ";", columns: ["nome", "valor"] })
 |-------|------|---------|-----------|
 | `header` | `boolean` | `true` | Incluir linha de header |
 | `delimiter` | `string` | `","` | Delimitador de campo |
-| `columns` | `string[]` | `undefined` | Quais colunas incluir e em que ordem. `undefined` = todas (extraídas do primeiro objeto) |
+| `columns` | `string[] \| Record<string, string>` | `undefined` | Quais colunas incluir e em que ordem. `string[]` usa as keys como headers. `Record` mapeia key do objeto → header no CSV. `undefined` = todas (extraídas do primeiro objeto) |
 | `newline` | `string` | `"\n"` | Caractere de quebra de linha |
+| `bom` | `boolean` | `false` | Prefixar BOM UTF-8 (`\uFEFF`) na saída. Necessário para Excel no Windows abrir o CSV com encoding correto |
+
+Exemplo de `columns` com rename:
+
+```ts
+generate(items, {
+  delimiter: ";",
+  columns: {
+    processNumber: "Número do Processo",
+    item: "Item",
+    value: "Valor Unitário",
+  }
+})
+```
+
+#### Conversão de valores
+
+Todos os valores são convertidos para string com `String(value)`. Casos especiais:
+- `null` e `undefined` → `""` (string vazia)
+- `number`, `boolean`, etc → `String(value)` (ex: `1500.50` → `"1500.50"`, `true` → `"true"`)
+
+A responsabilidade de formatar dados (ex: datas, moedas) é do caller, não da lib.
 
 #### Escape automático
 
@@ -157,9 +199,9 @@ csv-kit/
 
 ### utils.ts
 
-#### `detectDelimiter(line: string): string`
+#### `detectDelimiter(lines: string[]): string`
 
-Conta ocorrências de `,` `;` `\t` `|` na primeira linha (fora de campos entre aspas). Retorna o mais frequente.
+Recebe as 10 primeiras linhas. Conta ocorrências de `,` `;` `\t` `|` em cada linha (fora de campos entre aspas). Retorna o delimitador com contagem mais consistente entre linhas. Em caso de empate, prioridade: `,` > `;` > `\t` > `|`.
 
 #### `splitLines(csv: string): string[]`
 
@@ -175,22 +217,34 @@ Envolve o valor em aspas se necessário (contém delimitador, aspas, ou line bre
 
 ### parse.ts
 
-1. Normalizar line endings para `\n`
-2. Se `delimiter` é `"auto"`, detectar com `detectDelimiter`
-3. Fazer `splitLines` respeitando campos entre aspas
-4. Se `skipEmptyLines`, filtrar linhas vazias
-5. Primeira linha como headers (se `header: true`), aplicar `transformHeader`
-6. Para cada linha restante, `splitFields` e mapear para objeto
-7. Se `trim`, aplicar trim em cada valor
-8. Se `relaxed` e linha tem menos campos que headers, preencher com `""`
+1. Validar input — se não é string, throw `"csv-kit: input must be a string"`
+2. Remover BOM UTF-8 (`\uFEFF`) do início se presente
+3. Normalizar line endings para `\n`
+4. Fazer `splitLines` respeitando campos entre aspas
+5. Se `skipEmptyLines`, filtrar linhas vazias
+6. Se `delimiter` é `"auto"`, detectar com `detectDelimiter` usando as 10 primeiras linhas
+7. Primeira linha como headers (se `header: true`), aplicar `transformHeader`
+8. Para cada linha restante, `splitFields` e mapear para objeto
+9. Se `trim`, aplicar trim em cada valor
+10. Se linha tem menos campos que headers:
+    - `relaxed: true` → preencher com `""`
+    - `relaxed: false` → throw com mensagem descritiva (linha e contagem)
+11. Se aspas não fechadas:
+    - `relaxed: true` → tratar como texto literal
+    - `relaxed: false` → throw com mensagem descritiva (linha)
 
 ### generate.ts
 
-1. Determinar colunas: `options.columns` ou `Object.keys(data[0])`
-2. Se `header: true`, gerar linha de header
-3. Para cada objeto, extrair valores na ordem das colunas
-4. Aplicar `escapeField` em cada valor
-5. Juntar com delimitador e newline
+1. Determinar colunas e headers:
+   - `columns` é `string[]` → keys = values = array
+   - `columns` é `Record<string, string>` → keys = `Object.keys()`, headers = `Object.values()`
+   - `columns` é `undefined` → keys e headers de `Object.keys(data[0])`
+2. Se `bom: true`, prefixar `\uFEFF`
+3. Se `header: true`, gerar linha de header (usando headers, não keys)
+4. Para cada objeto, extrair valores na ordem das keys
+5. Converter valores: `null/undefined → ""`, resto → `String(value)`
+6. Aplicar `escapeField` em cada valor
+7. Juntar com delimitador e newline
 
 ## Casos de Teste
 
@@ -198,31 +252,39 @@ Envolve o valor em aspas se necessário (contém delimitador, aspas, ou line bre
 
 - CSV simples com vírgula
 - CSV com ponto-e-vírgula (padrão brasileiro)
-- Auto-detect de delimitador
+- Auto-detect de delimitador com 10 linhas
+- Auto-detect com header de campo único (não deve chutar errado)
 - Campos entre aspas com vírgulas dentro
 - Campos entre aspas com aspas internas (`""`)
 - Campos com line breaks dentro de aspas
 - Linhas vazias no meio do arquivo
 - Header com transformação (lowercase, snake_case)
-- `header: false` retornando `string[][]`
-- Modo `relaxed`: aspas não fechadas
-- Modo `relaxed`: linhas com número inconsistente de colunas
+- `header: false` retornando `string[][]` (tipo correto via overload)
+- Modo `relaxed`: aspas não fechadas → texto literal
+- Modo `relaxed`: linhas com número inconsistente de colunas → preenchido com `""`
+- Modo strict: aspas não fechadas → throw com mensagem descritiva
+- Modo strict: colunas inconsistentes → throw com mensagem descritiva
+- Input não-string → throw `"csv-kit: input must be a string"`
 - Trim em valores com espaços
 - CSV vazio retorna `[]`
 - CSV com apenas header retorna `[]`
-- BOM UTF-8 no início do arquivo
+- BOM UTF-8 no início do arquivo é removido automaticamente
 
 ### generate
 
 - Array de objetos simples
 - Delimitador customizado (`;`)
-- Subset de colunas com `columns`
+- Subset de colunas com `columns` (string[])
+- Rename de headers com `columns` (Record<string, string>)
 - Valores com vírgula são envoltos em aspas
 - Valores com aspas são escapados com `""`
 - Valores com line breaks são envoltos em aspas
 - `header: false` omite linha de header
 - Array vazio retorna `""` (ou só o header se `header: true`)
 - Valores `null` e `undefined` viram string vazia
+- Valores `number`, `boolean` viram `String(value)`
+- `bom: true` prefixa `\uFEFF` na saída
+- `bom: false` (default) não prefixa nada
 
 ## Mapeamento — Substituição no Licitei
 
@@ -274,24 +336,38 @@ const records = parse(csvContent, {
 
 Os defaults de csv-kit (`header: true`, `skipEmptyLines: true`, `trim: true`) cobrem a maioria. Só `delimiter` e `relaxed` precisam ser explícitos.
 
-### Utilitário manual → csv-kit (pcp-csv.ts)
+### Utilitário manual → csv-kit (pcp-csv.ts + pcp-declarations.tsx)
 
 ```ts
-// Antes — 50 linhas de string concatenation manual
+// Antes — 50 linhas de string concatenation manual + BOM manual
 const escapeCSVValue = (value: string): string => {
   const stringValue = String(value)
   return `"${stringValue.replace(/"/g, '""')}"`
 }
 // ... montagem manual de headers e linhas
+// ... BOM manual: const bom = "\uFEFF"; new Blob([bom + csvData], ...)
 
 // Depois
 import { generate } from "csv-kit"
 const csv = generate(items, {
   delimiter: ";",
+  bom: true,
   columns: hasGroup
-    ? ["processNumber", "id", "group", "item", ...]
-    : ["processNumber", "id", "item", ...],
+    ? {
+        processNumber: "Número do Processo (Não edite)",
+        id: "ID (Não edite)",
+        group: "Lote (Não edite)",
+        item: "Item (Não edite)",
+        // ...
+      }
+    : {
+        processNumber: "Número do Processo (Não edite)",
+        id: "ID (Não edite)",
+        item: "Item (Não edite)",
+        // ...
+      },
 })
+// BOM já incluso na string — Blob direto: new Blob([csv], { type: "text/csv;charset=utf-8;" })
 ```
 
 ## Referências
