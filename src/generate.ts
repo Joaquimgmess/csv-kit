@@ -1,13 +1,34 @@
 import { escapeField } from "./utils";
 
+/** Options for the {@link generate} function. */
 export interface GenerateOptions {
+	/** Include a header line. @default true */
 	header?: boolean;
+	/** Field delimiter. @default "," */
 	delimiter?: string;
+	/** Select, order, and optionally rename columns. `string[]` uses keys as headers. `Record` maps object key → CSV header name. */
 	columns?: string[] | Record<string, string>;
+	/** Line break character. @default "\n" */
 	newline?: string;
+	/** Prefix UTF-8 BOM (`\uFEFF`) for Excel compatibility on Windows. @default false */
 	bom?: boolean;
 }
 
+/**
+ * Converts an array of objects into a CSV string.
+ *
+ * @example
+ * ```ts
+ * generate([{ name: "Alice", age: 30 }])
+ * // "name,age\nAlice,30"
+ *
+ * generate(items, {
+ *   delimiter: ";",
+ *   bom: true,
+ *   columns: { name: "Nome", age: "Idade" },
+ * })
+ * ```
+ */
 export function generate<T extends Record<string, unknown>>(
 	data: T[],
 	options?: GenerateOptions,

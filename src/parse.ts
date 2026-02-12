@@ -1,14 +1,33 @@
 import { detectDelimiter, splitFields, splitLines } from "./utils";
 
+/** Options for the {@link parse} function. */
 export interface ParseOptions {
+	/** Use the first line as object keys. When `false`, returns `string[][]`. @default true */
 	header?: boolean;
+	/** Field delimiter. `"auto"` detects from `,` `;` `\t` `|` using the first 10 lines. @default "auto" */
 	delimiter?: string | "auto";
+	/** Skip empty lines. @default true */
 	skipEmptyLines?: boolean;
+	/** Trim whitespace from each value. @default true */
 	trim?: boolean;
+	/** Transform header names before using them as object keys. */
 	transformHeader?: (header: string, index: number) => string;
+	/** Tolerate malformed quotes and inconsistent column counts instead of throwing. @default false */
 	relaxed?: boolean;
 }
 
+/**
+ * Parses a CSV string into an array of objects or arrays.
+ *
+ * @example
+ * ```ts
+ * const rows = parse<{ name: string; age: string }>("name,age\nAlice,30")
+ * // [{ name: "Alice", age: "30" }]
+ *
+ * const raw = parse("a,b\n1,2", { header: false })
+ * // [["a", "b"], ["1", "2"]]
+ * ```
+ */
 export function parse<T = Record<string, string>>(
 	csv: string,
 	options?: ParseOptions & { header?: true },
