@@ -39,6 +39,13 @@ export function parse<T = Record<string, string>>(
 	csv: string,
 	options?: ParseOptions & { header?: true },
 ): T[];
+/**
+ * Parses a CSV string into an array of string arrays (raw mode).
+ *
+ * @param csv The CSV string to parse.
+ * @param options Parsing options with `header: false`.
+ * @returns An array of string arrays where each inner array represents a row.
+ */
 export function parse(
 	csv: string,
 	options: ParseOptions & { header: false },
