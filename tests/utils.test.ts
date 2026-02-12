@@ -132,6 +132,18 @@ describe("splitFields", () => {
   test("quoted field with line break inside", () => {
     expect(splitFields('"a\nb",c', ",", false)).toEqual(["a\nb", "c"])
   })
+
+  test("all fields quoted", () => {
+    expect(splitFields('"a","b","c"', ",", false)).toEqual(["a", "b", "c"])
+  })
+
+  test("trailing delimiter produces empty last field", () => {
+    expect(splitFields("a,b,", ",", false)).toEqual(["a", "b", ""])
+  })
+
+  test("multiple escaped quotes in one field", () => {
+    expect(splitFields('"he said ""hello"" and ""bye"""', ",", false)).toEqual(['he said "hello" and "bye"'])
+  })
 })
 
 // --- escapeField ---

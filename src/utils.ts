@@ -95,7 +95,6 @@ export function splitFields(line: string, delimiter: string, relaxed: boolean): 
   const fields: string[] = []
   let current = ""
   let inQuotes = false
-  let fieldStartedWithQuote = false
   let i = 0
 
   while (i < line.length) {
@@ -103,13 +102,11 @@ export function splitFields(line: string, delimiter: string, relaxed: boolean): 
 
     if (!inQuotes) {
       if (char === delimiter) {
-        fields.push(fieldStartedWithQuote ? unquote(current) : current)
+        fields.push(current)
         current = ""
-        fieldStartedWithQuote = false
         i++
       } else if (char === '"' && current.length === 0) {
         inQuotes = true
-        fieldStartedWithQuote = true
         i++
       } else {
         current += char
@@ -137,17 +134,11 @@ export function splitFields(line: string, delimiter: string, relaxed: boolean): 
   // Unclosed quote
   if (inQuotes) {
     if (!relaxed) return null
-    // In relaxed mode, treat as literal text
   }
 
-  fields.push(fieldStartedWithQuote && !inQuotes ? unquote(current) : current)
+  fields.push(current)
 
   return fields
-}
-
-/** Strips surrounding quotes and unescapes internal "" → " */
-function unquote(value: string): string {
-  return value
 }
 
 /**
