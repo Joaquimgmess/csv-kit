@@ -17,6 +17,13 @@ export interface GenerateOptions {
 /**
  * Converts an array of objects into a CSV string.
  *
+ * Values are automatically escaped per RFC 4180. `null`/`undefined` become
+ * empty strings, other types are converted via `String()`.
+ *
+ * @param data Array of objects to convert.
+ * @param options Generation options. See {@link GenerateOptions}.
+ * @returns The CSV string.
+ *
  * @example
  * ```ts
  * generate([{ name: "Alice", age: 30 }])

@@ -19,6 +19,13 @@ export interface ParseOptions {
 /**
  * Parses a CSV string into an array of objects or arrays.
  *
+ * Automatically strips UTF-8 BOM, normalizes line endings, and auto-detects
+ * the delimiter from the first 10 lines.
+ *
+ * @param csv The CSV string to parse.
+ * @param options Parsing options. See {@link ParseOptions}.
+ * @returns An array of typed objects (`T[]`) when `header: true`, or `string[][]` when `header: false`.
+ *
  * @example
  * ```ts
  * const rows = parse<{ name: string; age: string }>("name,age\nAlice,30")
